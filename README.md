@@ -4,8 +4,42 @@ Submission for the Senior Full-Stack .NET Modernization Developer take-home assi
 
 **Which requirements this follows.** The repository's own PDF, [Take-Home Technical Assignment](assignment/Take-Home_Technical_Assignment_Formatted.pdf), built against upstream commit `87768d6`. The PDF attached to the original email described an earlier ASP.NET MVC version of the starter; the repository was restructured afterwards, and its README names the PDF in the repository as the requirements source.
 
+## Quick start for reviewers
+
+You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (or newer) and [Node.js](https://nodejs.org/) LTS. No database server or other setup is required: the SQLite database, with sample data, is in the repository.
+
+1. Clone the repository and check out the `feature/provider-license-solution` branch.
+2. In a first terminal, at the repository root, start the API:
+
+   ```bash
+   dotnet run --project backend/Candidate.API --launch-profile http
+   ```
+
+   Wait for `Now listening on: http://localhost:5264`.
+3. In a second terminal, start the React UI:
+
+   ```bash
+   cd frontend/React.UI
+   npm ci
+   npm run dev
+   ```
+
+4. Open the address Vite prints, normally <http://localhost:5173>.
+
+What to try:
+
+| View | What it shows |
+| --- | --- |
+| **Providers** | Search, filter, add, edit, and delete (with confirmation). `Licenses` opens a provider's licenses. `Issue License` appears for a provider with no valid license |
+| **License Reports** | The two required license scenarios |
+| **Dashboard** | Summary cards and charts. Select any number to see the records behind it |
+| **Deleted (Audit)** | Soft-deleted providers, which are hidden everywhere else |
+
+Swagger UI for the API is at <http://localhost:5264/swagger>. To run the tests, see [Running the tests](#running-the-tests). A two-page overview of the solution and the reasoning behind it is in [docs/Executive_Summary.pdf](docs/Executive_Summary.pdf).
+
 ## Contents
 
+- [Quick start for reviewers](#quick-start-for-reviewers)
 - [What is included](#what-is-included)
 - [Technology stack](#technology-stack)
 - [Prerequisites](#prerequisites)
@@ -28,7 +62,8 @@ Submission for the Senior Full-Stack .NET Modernization Developer take-home assi
 | --- | --- |
 | Provider listing, create, edit, soft delete (8.1 to 8.4) | `Providers` view in the UI; `api/providers` |
 | License information for a provider (8.5) | `Licenses` button on each provider; `GET api/providers/{id}` |
-| Required data scenarios (8.6) | `License reports` view; `api/reports/*`; database views; `02_scenario_queries.sql` |
+| Required data scenarios (8.6) | `License Reports` view; `api/reports/*`; database views; `02_scenario_queries.sql` |
+| Issue a license (an addition, not required) | `Issue License` button on the `Providers` and `License Reports` views; `POST api/providers/{id}/licenses` |
 | C# API with validation and error responses (8.7) | `backend/Candidate.API` |
 | React UI with loading, empty, validation, and error states (8.8) | `frontend/React.UI` |
 | Optional dashboard (10) | `Dashboard` view; `api/dashboard/summary` |
@@ -36,7 +71,7 @@ Submission for the Senior Full-Stack .NET Modernization Developer take-home assi
 | SQL scripts | `backend/Candidate.API/Database/Scripts/` |
 | Tests (not required; added deliberately) | `backend/Candidate.API.Tests`, `frontend/React.UI/src/**/*.test.*` |
 
-A longer log of each decision and the alternatives considered is in [docs/DECISIONS.md](docs/DECISIONS.md).
+A two-page overview is in [docs/Executive_Summary.pdf](docs/Executive_Summary.pdf). A longer log of each decision and the alternatives considered is in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Technology stack
 
@@ -55,7 +90,7 @@ Material choices:
 
 - **`net8.0` kept.** The starter targets it and its prerequisites list the .NET 8 SDK, so reviewers can run the submission without installing anything else. .NET 8 reaches end of support on November 10, 2026; the upgrade to .NET 10 is listed under improvements.
 - **JavaScript kept**, with JSDoc types on the API client, to avoid re-scaffolding the starter.
-- **No UI, routing, or charting library.** Four views are switched with component state, and the dashboard bars are plain CSS. Each dependency removed is one less thing to patch.
+- **No UI, routing, or charting library.** Four views are switched with component state, and the dashboard charts are plain CSS bars and one small SVG pie. Each dependency removed is one less thing to patch.
 - **`dotnet-ef` is a local tool** pinned in `dotnet-tools.json`, so everyone runs the same version with `dotnet tool restore`.
 
 ## Prerequisites
@@ -68,6 +103,8 @@ Material choices:
   - Visual Studio Code or Cursor
 
 No database server is needed. SQLite is a file, and the engine ships inside the EF Core package.
+
+NuGet packages are restored from nuget.org on the first build, so that build needs internet access. The `nuget.config` at the repository root names nuget.org as the package source, which makes the restore work on a machine whose own NuGet configuration has no online source.
 
 ## Running the application
 
@@ -141,8 +178,8 @@ npm test
 
 | Suite | What it covers |
 | --- | --- |
-| Backend (132 tests) | Soft delete in every layer, including raw SQL blocked by trigger; provider rules (duplicates, concurrency, validation); request validation attributes; the license scenarios against a fixed date, including the boundary day; the committed sample data; every route through HTTP |
-| Frontend (61 tests) | Form validation rules; the API client's error handling; the provider form; list, filter, delete-confirmation, and license workflows; the scenario reports; loading, empty, and error states |
+| Backend (174 tests) | Soft delete in every layer, including raw SQL blocked by trigger; provider rules (duplicates, concurrency, validation); issuing a license (eligibility, generated number, date rules); request validation attributes; the license scenarios against a fixed date, including the boundary day; the committed sample data; that each dashboard number equals the count of records its list returns; every route through HTTP |
+| Frontend (130 tests) | Form validation rules for providers and licenses; the API client's error handling; the provider and issue-license forms; list, filter, delete-confirmation, and license workflows; the scenario reports; the dashboard charts and the record list behind each number; loading, empty, and error states |
 
 Backend tests use a real SQLite database in memory, created by the same migrations as the application. The EF Core InMemory provider was avoided on purpose: it enforces no constraints, indexes, triggers, or views, which are the parts most worth testing here.
 
@@ -169,6 +206,7 @@ Browser  --->  Vite dev server (:5173)  --->  ASP.NET Core API (:5264)  --->  SQ
 | `GET /api/providers` | List providers that are not deleted. Query: `search` (name contains, case-insensitive), `status`, `countyId`, `page`, `pageSize` (1 to 100, default 20) | 200, 400 |
 | `GET /api/providers/{id}` | One provider with its licenses and computed validity | 200, 404 |
 | `GET /api/providers/{id}/licenses` | The licenses of one provider | 200, 404 |
+| `POST /api/providers/{id}/licenses` | Issue a license. Body: optional `issueDate` and `expirationDate` (`yyyy-MM-dd`) | 201 with `Location`, 400, 404, 409 |
 | `POST /api/providers` | Create a provider | 201 with `Location`, 400, 409 |
 | `PUT /api/providers/{id}` | Update a provider; requires `concurrencyStamp` | 200, 400, 404, 409 |
 | `DELETE /api/providers/{id}` | Soft-delete a provider | 204, 404 |
@@ -177,11 +215,14 @@ Browser  --->  Vite dev server (:5173)  --->  ASP.NET Core API (:5264)  --->  SQ
 | `GET /api/audit/providers/deleted` | Soft-deleted providers, for audit | 200 |
 | `GET /api/lookups/counties`, `GET /api/lookups/statuses` | Dropdown values | 200 |
 | `GET /api/dashboard/summary` | Counts for the dashboard | 200 |
+| `GET /api/dashboard/providers` | The providers behind a dashboard number. Query: `status`, `county` (name), `licenseGap` (`NoValidLicense` or `ExpiredLicense`) | 200, 400 |
+| `GET /api/dashboard/licenses` | The licenses behind a dashboard number. Query: `validity` (`Valid`, `Expired`, `Suspended`, `OtherNotValid`); omit for all | 200, 400 |
 
 Design choices:
 
 - **A soft-deleted provider is 404** on every standard route: read, update, and delete. Deleting twice returns 404 the second time, not an error.
-- **409 Conflict** has two causes: a provider with the same name already exists in the same county, or the `concurrencyStamp` sent with an update is stale because someone else saved first.
+- **409 Conflict** has three causes: a provider with the same name already exists in the same county; the `concurrencyStamp` sent with an update is stale because someone else saved first; or a license is being issued to a provider that already holds a valid one.
+- **Issuing a license.** Allowed only when the provider has no currently valid license (none at all, expired, or suspended). The API generates the license number from the new row's id (`CCLC-` followed by 10000 plus the id), so two simultaneous requests cannot receive the same number. The issue date defaults to today and cannot be in the future; the expiration date defaults to one year after the issue date, cannot be earlier than that (one year is the minimum term), and cannot be in the past. The license is stored as `Active`.
 - **Optimistic concurrency.** Every read returns a `concurrencyStamp`. An update must send it back; the API replaces it on every save.
 - **Structure.** Controllers are thin. Rules live in services (`ProviderService`, `ReportService`, and others), which return a result that is either a value or an expected failure; controllers translate that to HTTP. There is no repository layer on top of EF Core, because `DbContext` is already a unit of work and another layer would add code without adding behaviour.
 - **Entities never leave the API.** Requests and responses are separate types in `Contracts/`, so audit columns cannot be set by a client.
@@ -286,16 +327,16 @@ Supporting decisions:
 - **Flag plus timestamp, rather than timestamp only.** `IsDeleted` makes intent obvious to anyone reading the table and makes the partial indexes read naturally. The CHECK constraint removes the usual risk of the two drifting apart.
 - **Deleted is not a status.** `Inactive` is a business state and such a provider still appears in listings. Deletion is a record state held in its own columns.
 - **Licenses are hidden through their provider, not flagged one by one.** Deleting a provider does not touch its license rows. They disappear from standard results because the license filter looks at the provider. A future restore is then a single-row change, and the audit trail shows exactly what the user did.
-- **Deleted records stay queryable for audit** in three ways: `GET /api/audit/providers/deleted` and the `Deleted (audit)` view in the UI; the `vw_DeletedProvidersAudit` database view; and plain SQL (examples in `02_scenario_queries.sql`). In code, `AuditService` is the only class that calls `IgnoreQueryFilters()`.
+- **Deleted records stay queryable for audit** in three ways: `GET /api/audit/providers/deleted` and the `Deleted (Audit)` view in the UI; the `vw_DeletedProvidersAudit` database view; and plain SQL (examples in `02_scenario_queries.sql`). In code, `AuditService` is the only class that calls `IgnoreQueryFilters()`.
 - **Who deleted it.** There is no authentication in the assignment, so `DeletedBy`, `CreatedBy`, and `ModifiedBy` are filled from an `ICurrentUser` abstraction that returns the placeholder `anonymous`. Adding authentication means replacing that one class.
 
 ## Required data scenarios
 
 | Scenario | API | UI | Database |
 | --- | --- | --- | --- |
-| Active providers and their active licenses | `GET /api/reports/active-providers-active-licenses` | License reports, first tab | `vw_ActiveProvidersActiveLicenses` |
-| Providers appearing active but having expired licenses | `GET /api/reports/active-providers-expired-licenses` | License reports, second tab | `vw_ActiveProvidersExpiredLicenses` |
-| Exclusion of soft-deleted providers | Every standard endpoint | Every view except Deleted (audit) | `vw_Providers` |
+| Active providers and their active licenses | `GET /api/reports/active-providers-active-licenses` | License Reports, first tab | `vw_ActiveProvidersActiveLicenses` |
+| Providers appearing active but having expired licenses | `GET /api/reports/active-providers-expired-licenses` | License Reports, second tab | `vw_ActiveProvidersExpiredLicenses` |
+| Exclusion of soft-deleted providers | Every standard endpoint | Every view except Deleted (Audit) | `vw_Providers` |
 
 License validity is defined once, in `Domain/LicenseRules.cs`:
 
@@ -307,15 +348,30 @@ The sample data covers each case with one provider or more: all licenses valid; 
 
 ## Optional dashboard
 
-The `Dashboard` view is read-only and draws what `GET /api/dashboard/summary` returns. Nothing is computed in the browser.
+The `Dashboard` view is read-only and draws what the API returns. Nothing is counted or filtered in the browser.
 
-Metrics were chosen for compliance risk first:
+| Suggested in the assignment | Implemented as |
+| --- | --- |
+| Summary cards with key counts | Four cards: providers, licenses, active providers with no valid license, active providers with an expired license |
+| Providers by status | Bar chart |
+| Expired versus active licenses | Pie chart of licenses by validity today (valid, expired, suspended) |
+| Licenses per provider | Bar chart of the ten providers holding the most licenses |
+| Providers with expiring licenses | Table of valid licenses expiring in the next 90 days |
 
-- **Active providers with no valid license** and **active providers with an expired license**: the two numbers that mean someone needs to act. The cards turn red when they are above zero.
-- **Valid licenses expiring in the next 90 days**: the work that is coming.
-- **Providers by status, licenses by validity today, providers by county**: context for the numbers above.
+A bar chart of providers by county is included as well.
 
-The bars are plain CSS rather than a charting library, which is enough for a handful of counts.
+**Why these metrics.** Compliance risk comes first. The two red cards are the numbers that mean someone needs to act, the expiring table is the work that is coming, and the charts give context for both.
+
+**Every number opens its records.** Selecting a card, a bar, a pie slice, or a legend entry opens a read-only modal listing the providers or licenses behind that number. A bar in the licenses-per-provider chart, or a provider name in the expiring table, opens that provider with its licenses. A zero is not clickable.
+
+**How the frontend and backend are integrated.**
+
+- `GET /api/dashboard/summary` returns every count in one response. Each chart entry carries a `key`.
+- Selecting a number calls `GET /api/dashboard/providers` or `GET /api/dashboard/licenses` with that key as a filter, and the modal displays the rows returned.
+- In `DashboardService`, a count and the list behind it are built from the same query, so a number and the records it opens cannot disagree. A backend test checks this for every number against the sample data.
+- Record lists are capped at 500 rows. The dashboard is an overview, not an export.
+
+The charts are plain CSS bars and one small SVG pie rather than a charting library, which is enough for a handful of counts. With the sample data the expiring table is empty, because the sample dates are deliberately years away from today.
 
 ## Assumptions and trade-offs
 
@@ -336,14 +392,14 @@ The bars are plain CSS rather than a charting library, which is enough for a han
 15. **Search uses `LIKE '%text%'`**, which cannot use the name index. Acceptable at this size.
 16. **Migrations and sample data at startup** are a Development convenience. Production would run migrations from the release pipeline and would not load sample data.
 17. **SQLite is single-writer.** Fine for this exercise. A multi-user system would move to SQL Server or Azure SQL, where the same design maps to filtered indexes and `INSTEAD OF DELETE` triggers.
-18. **The UI was verified by automated tests and by calling the API through the dev proxy**, not by a visual review in a browser.
+18. **Issuing a license** is offered only to a provider with no valid license. A provider that needs a second concurrent license is not covered; whether that is allowed is a question for the business. The issue-license form takes "today" from the user's machine for its defaults, while the API decides in US Eastern time, so near midnight the API may reject a date the form accepted.
 
 ## What I would improve with more time
 
 - Authentication and authorization, with real user names in the audit columns and a restricted audit endpoint.
 - A restore operation for soft-deleted providers.
 - A change-history table recording each change with before and after values.
-- License create, edit, and delete in the API and UI.
+- License edit, suspend, renew, and delete in the API and UI. Only issuing a new license exists today.
 - Upgrade to .NET 10 before .NET 8 leaves support in November 2026.
 - A CI pipeline that builds, runs both test suites, and checks that `01_schema.sql` matches the migrations.
 - TypeScript, or types generated from the API's OpenAPI document, so the UI and API contracts cannot drift.
@@ -374,10 +430,11 @@ Expected results:
 - The solution build succeeds for `Candidate.API`, `Candidate.API.Tests`, and `React.UI`.
 - Both test suites pass.
 - The API reports no startup exception. Swagger UI at `http://localhost:5264/swagger` lists the routes in the [API reference](#api-reference).
-- The React page lists 11 providers, ten per page. `Albany Tiny Tots` is not among them and appears under `Deleted (audit)`.
-- `License reports` shows seven providers on the first tab and three on the second.
-- Deleting a provider asks for confirmation, removes it from the list, and adds it to `Deleted (audit)`. The row is still in the `Provider` table with `IsDeleted = 1`.
-- With the API stopped, the UI shows an error message with a `Try again` button instead of a blank page.
+- The React page lists 11 providers, ten per page. `Albany Tiny Tots` is not among them and appears under `Deleted (Audit)`.
+- `License Reports` shows seven providers on the first tab and three on the second.
+- `Issue License` appears on providers with no valid license. Issuing one shows the generated number, and the button disappears for that provider.
+- Deleting a provider asks for confirmation, removes it from the list, and adds it to `Deleted (Audit)`. The row is still in the `Provider` table with `IsDeleted = 1`.
+- With the API stopped, the UI shows an error message with a `Try Again` button instead of a blank page.
 
 Stop the API before committing `providers.db`, and confirm no `providers.db-wal` or `providers.db-shm` file remains beside it.
 
@@ -386,7 +443,9 @@ Stop the API before committing `providers.db`, and confirm no `providers.db-wal`
 ```text
 CandidateAssessment.sln
 dotnet-tools.json                 Pins the dotnet-ef local tool
+nuget.config                      Package source (nuget.org)
 assignment/                       Official assignment PDF and submission guide
+docs/Executive_Summary.pdf        Two-page overview of the solution
 docs/DECISIONS.md                 Decision log
 backend/Candidate.API/
   Controllers/                    HTTP only: routing, status codes, problem responses
@@ -399,8 +458,8 @@ backend/Candidate.API/
 backend/Candidate.API.Tests/      xUnit tests
 frontend/React.UI/
   src/api/                        fetch wrapper and one function per endpoint
-  src/pages/                      Providers, License reports, Dashboard, Deleted (audit)
-  src/components/                 Form, dialogs, license table, shared states
+  src/pages/                      Providers, License Reports, Dashboard, Deleted (Audit)
+  src/components/                 Forms, dialogs, license table, shared states
   src/hooks/                      Data loading
   src/validation/                 Form validation rules
 ```

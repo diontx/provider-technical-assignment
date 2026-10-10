@@ -76,14 +76,19 @@ These differ from, or add to, the original plan.
 | A page size above 100 is rejected with 400 | Explicit is better than silently returning fewer rows than asked for |
 | Request status is a string validated against the enum | An unknown value produces a field-level message instead of a JSON deserialization error |
 | Backend tests use SQLite in memory, built by the migrations | The EF Core InMemory provider enforces no constraints, indexes, triggers, or views |
-| The dashboard uses CSS bars, not a charting library | A few counts do not justify a dependency |
+| The dashboard uses CSS bars and an SVG pie, not a charting library | A few counts do not justify a dependency |
+| Every dashboard number opens a read-only list of its records, selected by the API | The reader can check any number. The count and its list share one query in `DashboardService`, so they cannot disagree, and the filtering is not repeated in the browser |
+| Dashboard record lists are capped at 500 rows, without paging | An overview, not an export. Paging would be the next step for larger data |
 | The UI has no router | Four views; component state is enough |
 | The UI validates required fields and length; the API validates everything | Immediate feedback for the user, with one authority for the rules |
-| A `Deleted (audit)` view was added to the UI | Makes "deleted records remain queryable" visible to a reviewer without opening the database |
+| Provider licenses open in a modal | Keeps the list in place instead of pushing the detail below the table |
+| Issuing a license was added, limited to providers with no valid license | Lets a reviewer close the compliance gap the reports reveal. The eligibility rule is enforced by the API (409), not only by hiding the button |
+| The license number is derived from the new row's id | "Highest existing number plus one" can hand the same number to two simultaneous requests; an identity value cannot. The sample numbers already follow this pattern |
+| The number is assigned in the same transaction with a direct update | It is part of creating the row, so it does not stamp the license as modified |
+| A `Deleted (Audit)` view was added to the UI | Makes "deleted records remain queryable" visible to a reviewer without opening the database |
 
 ## 4. Known limits
 
 - The county list was entered from memory and checked for count, duplicates, and order only.
-- The UI was verified with automated tests and API calls through the dev proxy, not by a visual review in a browser.
 - No authentication; audit columns hold the placeholder `anonymous`.
 - SQLite allows one writer at a time.
