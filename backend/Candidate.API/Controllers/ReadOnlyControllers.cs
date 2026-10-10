@@ -49,4 +49,20 @@ public sealed class DashboardController(IDashboardService dashboard) : ApiContro
     [HttpGet("summary")]
     public async Task<ActionResult<DashboardSummary>> Summary(CancellationToken cancellationToken) =>
         Ok(await dashboard.SummaryAsync(cancellationToken));
+
+    /// <summary>The providers behind a dashboard number. Filters: status, county (name), licenseGap.</summary>
+    [HttpGet("providers")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<ProviderListItem>>> Providers(
+        [FromQuery] DashboardProviderQuery query, CancellationToken cancellationToken) =>
+        Ok(await dashboard.ProvidersAsync(query, cancellationToken));
+
+    /// <summary>The licenses behind a dashboard number. Omit validity to list every license.</summary>
+    [HttpGet("licenses")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<DashboardLicenseRow>>> Licenses(
+        [FromQuery] LicenseValidity? validity, CancellationToken cancellationToken) =>
+        Ok(await dashboard.LicensesAsync(validity, cancellationToken));
 }

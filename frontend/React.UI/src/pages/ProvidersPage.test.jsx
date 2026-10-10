@@ -100,7 +100,7 @@ describe('ProvidersPage states', () => {
     const user = userEvent.setup()
     await screen.findByRole('rowheader', { name: peachtree.providerName })
 
-    await user.type(screen.getByLabelText('Search by name'), 'zzz')
+    await user.type(screen.getByLabelText('Search by Name'), 'zzz')
 
     expect(await screen.findByText('No providers match these filters.')).toBeInTheDocument()
   })
@@ -118,7 +118,7 @@ describe('ProvidersPage states', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('The API could not complete the request (500).')
 
     failing = false
-    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    await user.click(screen.getByRole('button', { name: 'Try Again' }))
 
     expect(await screen.findByRole('rowheader', { name: peachtree.providerName })).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -134,7 +134,7 @@ describe('ProvidersPage filters', () => {
 
     await user.selectOptions(screen.getByLabelText('Status'), 'Active')
     await user.selectOptions(screen.getByLabelText('County'), 'Fulton')
-    await user.type(screen.getByLabelText('Search by name'), 'peach')
+    await user.type(screen.getByLabelText('Search by Name'), 'peach')
 
     await waitFor(() =>
       expect(fetchMock.calls('GET').map((request) => request.url)).toContain(
@@ -152,7 +152,7 @@ describe('ProvidersPage delete', () => {
 
     await user.click(await screen.findByRole('button', { name: `Delete ${peachtree.providerName}` }))
 
-    const dialog = screen.getByRole('dialog', { name: 'Delete provider?' })
+    const dialog = screen.getByRole('dialog', { name: 'Delete Provider?' })
     expect(dialog).toHaveTextContent(peachtree.providerName)
     expect(dialog).toHaveTextContent('kept for audit')
     expect(fetchMock.calls('DELETE')).toHaveLength(0)
@@ -170,7 +170,7 @@ describe('ProvidersPage delete', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: `Delete ${peachtree.providerName}` }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete provider' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete Provider' }))
 
     await waitFor(() =>
       expect(screen.queryByRole('rowheader', { name: peachtree.providerName })).not.toBeInTheDocument(),
@@ -191,7 +191,7 @@ describe('ProvidersPage delete', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: `Delete ${peachtree.providerName}` }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete provider' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete Provider' }))
 
     expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('Provider 1 was not found.')
   })
@@ -205,7 +205,7 @@ describe('ProvidersPage licenses', () => {
 
     await user.click(await screen.findByRole('button', { name: `View licenses for ${savannah.providerName}` }))
 
-    const panel = await screen.findByRole('region', { name: 'Provider licenses' })
+    const panel = await screen.findByRole('dialog', { name: savannah.providerName })
     expect(await within(panel).findByText('CCLC-10005')).toBeInTheDocument()
     expect(fetchMock.calls('GET').map((request) => request.url)).toContain('/api/providers/3')
 
@@ -213,6 +213,83 @@ describe('ProvidersPage licenses', () => {
     expect(within(panel).getByText('Expired (status still says Active)')).toBeInTheDocument()
     expect(within(panel).getByRole('note')).toHaveTextContent('Active but has no currently valid license')
     expect(within(panel).getByText('Mar 31, 2025')).toBeInTheDocument()
+  })
+
+  it('shows the licenses in a modal that the Close button dismisses', async () => {
+    fakeApi([savannah])
+    render(<ProvidersPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: `View licenses for ${savannah.providerName}` }))
+    const dialog = await screen.findByRole('dialog', { name: savannah.providerName })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('rowheader', { name: savannah.providerName })).toBeInTheDocument()
+  })
+
+  it('closes the license modal with the Escape key', async () => {
+    fakeApi([savannah])
+    render(<ProvidersPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: `View licenses for ${savannah.providerName}` }))
+    await screen.findByRole('dialog', { name: savannah.providerName })
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('ProvidersPage issue license', () => {
+  it('offers the button only for providers with no valid license', async () => {
+    fakeApi([peachtree, savannah])
+    render(<ProvidersPage />)
+
+    await screen.findByRole('rowheader', { name: savannah.providerName })
+
+    expect(screen.getByRole('button', { name: `Issue License to ${savannah.providerName}` })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: `Issue License to ${peachtree.providerName}` })).not.toBeInTheDocument()
+  })
+
+  it('offers the button for a provider with no licenses at all', async () => {
+    const unlicensed = providerListItem({ providerId: 5, providerName: 'Athens Bright Beginnings', licenseCount: 0, validLicenseCount: 0 })
+    fakeApi([unlicensed])
+    render(<ProvidersPage />)
+
+    expect(await screen.findByRole('button', { name: 'Issue License to Athens Bright Beginnings' })).toBeInTheDocument()
+  })
+
+  it('issues through the API, reports the generated number, and reloads the list', async () => {
+    let issuedYet = false
+    const fetchMock = fakeApi([savannah], (request) => {
+      if (request.method === 'POST' && request.url === '/api/providers/3/licenses') {
+        issuedYet = true
+        return { status: 201, body: { licenseId: 13, providerId: 3, licenseNumber: 'CCLC-10013' } }
+      }
+      if (issuedYet && request.method === 'GET' && request.url.startsWith('/api/providers?')) {
+        return { body: page([{ ...savannah, licenseCount: 2, validLicenseCount: 1 }]) }
+      }
+      return undefined
+    })
+    render(<ProvidersPage />)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: `Issue License to ${savannah.providerName}` }))
+    const dialog = screen.getByRole('dialog', { name: 'Issue License' })
+    expect(fetchMock.calls('POST')).toHaveLength(0)
+    await user.click(within(dialog).getByRole('button', { name: 'Issue License' }))
+
+    expect(await screen.findByText(`License CCLC-10013 was issued to ${savannah.providerName}.`)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // The reloaded list shows a valid license, so the button is no longer offered.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: `Issue License to ${savannah.providerName}` })).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('rowheader', { name: savannah.providerName }).closest('tr')).toHaveTextContent('1 valid')
   })
 })
 
@@ -223,9 +300,9 @@ describe('ProvidersPage create and edit', () => {
     const user = userEvent.setup()
     await screen.findByRole('rowheader', { name: peachtree.providerName })
 
-    await user.click(screen.getByRole('button', { name: 'Add provider' }))
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }))
 
-    const dialog = screen.getByRole('dialog', { name: 'Add provider' })
+    const dialog = screen.getByRole('dialog', { name: 'Add Provider' })
     expect(within(within(dialog).getByLabelText('County')).getByRole('option', { name: 'DeKalb' })).toBeInTheDocument()
     expect(within(within(dialog).getByLabelText('Status')).getByRole('option', { name: 'Pending' })).toBeInTheDocument()
   })
@@ -247,10 +324,10 @@ describe('ProvidersPage create and edit', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: `Edit ${peachtree.providerName}` }))
-    const dialog = screen.getByRole('dialog', { name: 'Edit provider' })
-    await user.clear(within(dialog).getByLabelText('Provider name'))
-    await user.type(within(dialog).getByLabelText('Provider name'), 'Peachtree Renamed')
-    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    const dialog = screen.getByRole('dialog', { name: 'Edit Provider' })
+    await user.clear(within(dialog).getByLabelText('Provider Name'))
+    await user.type(within(dialog).getByLabelText('Provider Name'), 'Peachtree Renamed')
+    await user.click(within(dialog).getByRole('button', { name: 'Save Changes' }))
 
     expect(await screen.findByRole('rowheader', { name: 'Peachtree Renamed' })).toBeInTheDocument()
     expect(screen.getByText('Peachtree Renamed was updated.')).toBeInTheDocument()

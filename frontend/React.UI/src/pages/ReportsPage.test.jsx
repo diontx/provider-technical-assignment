@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from '../App.jsx'
@@ -70,7 +70,7 @@ describe('ReportsPage', () => {
     const user = userEvent.setup()
     await screen.findByRole('heading', { name: /Peachtree/ })
 
-    await user.click(screen.getByRole('button', { name: 'Active providers with expired licenses' }))
+    await user.click(screen.getByRole('button', { name: 'Active Providers with Expired Licenses' }))
 
     expect(await screen.findByRole('heading', { name: /Savannah Coastal Kids Academy/ })).toBeInTheDocument()
     expect(screen.getByText('Expired (status still says Active)')).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('ReportsPage', () => {
     render(<ReportsPage />)
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Active providers with expired licenses' }))
+    await user.click(screen.getByRole('button', { name: 'Active Providers with Expired Licenses' }))
 
     expect(await screen.findByText('No active provider has an expired license.')).toBeInTheDocument()
   })
@@ -96,7 +96,63 @@ describe('ReportsPage', () => {
     render(<ReportsPage />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The API could not complete the request (500).')
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try Again' })).toBeInTheDocument()
+  })
+})
+
+describe('ReportsPage issue license', () => {
+  it('offers the button only on providers the API flags as having no valid license', async () => {
+    fakeReports()
+    render(<ReportsPage />)
+
+    expect(await screen.findByRole('button', { name: 'Issue License to Athens Bright Beginnings' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Issue License to Peachtree Early Learning Center' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('issues a license from the expired-license report and reloads it', async () => {
+    const fetchMock = mockApi((request) => {
+      if (request.method === 'POST') {
+        return { status: 201, body: license({ licenseId: 13, providerId: 3, licenseNumber: 'CCLC-10013' }) }
+      }
+      if (request.url === '/api/reports/active-providers-active-licenses') return { body: activeReport }
+      return { body: expiredReport }
+    })
+    render(<ReportsPage />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Active Providers with Expired Licenses' }))
+    await user.click(await screen.findByRole('button', { name: 'Issue License to Savannah Coastal Kids Academy' }))
+    await user.click(within(screen.getByRole('dialog', { name: 'Issue License' })).getByRole('button', { name: 'Issue License' }))
+
+    expect(await screen.findByText('License CCLC-10013 was issued to Savannah Coastal Kids Academy.')).toBeInTheDocument()
+    expect(fetchMock.calls('POST').map((request) => request.url)).toEqual(['/api/providers/3/licenses'])
+    // One load when the tab opened, one more after the license was issued.
+    await waitFor(() =>
+      expect(
+        fetchMock.calls('GET').filter((request) => request.url === '/api/reports/active-providers-expired-licenses'),
+      ).toHaveLength(2),
+    )
+  })
+})
+
+describe('ReportsPage text', () => {
+  it('uses the agreed page title, report name, and description', async () => {
+    mockApi((request) => {
+      if (request.url.startsWith('/api/reports')) return { body: activeReport }
+      if (request.url === '/api/lookups/counties') return { body: [] }
+      if (request.url === '/api/lookups/statuses') return { body: { providerStatuses: [], licenseStatuses: [] } }
+      return { body: { items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 } }
+    })
+    render(<App />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'License Reports' }))
+
+    expect(screen.getByRole('heading', { level: 1, name: 'License Reports' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Active Providers and License Status' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('All active providers and their current license status.')).toBeInTheDocument()
   })
 })
 
@@ -121,10 +177,10 @@ describe('App navigation', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Providers' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'License reports' }))
+    await user.click(screen.getByRole('button', { name: 'License Reports' }))
     expect(await screen.findByRole('heading', { name: /Peachtree Early Learning Center/ })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Deleted (audit)' }))
+    await user.click(screen.getByRole('button', { name: 'Deleted (Audit)' }))
     expect(await screen.findByRole('rowheader', { name: 'Albany Tiny Tots' })).toBeInTheDocument()
   })
 })

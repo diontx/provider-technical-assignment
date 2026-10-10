@@ -23,6 +23,29 @@ internal static class ProviderMapper
             .Select(l => l.ToDto(today))
             .ToList();
 
+    /// <summary>
+    /// The list row, with license counts computed in SQL by the shared license rules.
+    /// Used by the provider list and by the dashboard, so both always count the same way.
+    /// </summary>
+    public static IQueryable<ProviderListItem> ToListItems(this IQueryable<Provider> providers, DateOnly today)
+    {
+        var isValid = LicenseRules.ValidOn(today);
+        var isExpired = LicenseRules.ExpiredOn(today);
+
+        return providers.Select(p => new ProviderListItem(
+            p.ProviderId,
+            p.ProviderName,
+            p.CountyId,
+            p.County.Name,
+            p.Status,
+            p.CreatedUtc,
+            p.ModifiedUtc,
+            p.Licenses.Count,
+            p.Licenses.AsQueryable().Count(isValid),
+            p.Licenses.AsQueryable().Count(isExpired),
+            p.ConcurrencyStamp));
+    }
+
     /// <summary>Expects County and Licenses to be loaded.</summary>
     public static ProviderDetail ToDetail(this Provider provider, DateOnly today) => new(
         provider.ProviderId,

@@ -26,10 +26,6 @@ public sealed class ProviderService(ProviderDbContext db, IClock clock) : IProvi
 
     public async Task<PagedResult<ProviderListItem>> ListAsync(ProviderQuery query, CancellationToken cancellationToken = default)
     {
-        var today = clock.Today;
-        var isValid = LicenseRules.ValidOn(today);
-        var isExpired = LicenseRules.ExpiredOn(today);
-
         var providers = db.Providers.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -57,18 +53,7 @@ public sealed class ProviderService(ProviderDbContext db, IClock clock) : IProvi
             .ThenBy(p => p.ProviderId)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(p => new ProviderListItem(
-                p.ProviderId,
-                p.ProviderName,
-                p.CountyId,
-                p.County.Name,
-                p.Status,
-                p.CreatedUtc,
-                p.ModifiedUtc,
-                p.Licenses.Count,
-                p.Licenses.AsQueryable().Count(isValid),
-                p.Licenses.AsQueryable().Count(isExpired),
-                p.ConcurrencyStamp))
+            .ToListItems(clock.Today)
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ProviderListItem>(items, query.Page, query.PageSize, totalCount);

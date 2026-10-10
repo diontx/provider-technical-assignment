@@ -93,6 +93,18 @@ public abstract class ProviderWriteRequest
 
 public sealed class CreateProviderRequest : ProviderWriteRequest;
 
+/// <summary>
+/// Both dates are optional. The license number is never supplied: the API generates it.
+/// </summary>
+public sealed class IssueLicenseRequest
+{
+    /// <summary>Defaults to today (US Eastern). Cannot be in the future.</summary>
+    public DateOnly? IssueDate { get; set; }
+
+    /// <summary>Defaults to one year after the issue date. Cannot be earlier than that, and cannot be in the past.</summary>
+    public DateOnly? ExpirationDate { get; set; }
+}
+
 public sealed class UpdateProviderRequest : ProviderWriteRequest
 {
     /// <summary>The value returned when the provider was loaded. A stale value is rejected with 409.</summary>

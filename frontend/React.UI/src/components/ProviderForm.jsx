@@ -78,7 +78,7 @@ export default function ProviderForm({ provider, counties, statuses, onSaved, on
   }
 
   return (
-    <Modal title={isEdit ? 'Edit provider' : 'Add provider'} onCancel={onCancel} busy={saving}>
+    <Modal title={isEdit ? 'Edit Provider' : 'Add Provider'} onCancel={onCancel} busy={saving}>
       {/* noValidate: the messages come from validateProvider and the API, not the browser. */}
       <form onSubmit={onSubmit} noValidate>
         {formError && (
@@ -88,7 +88,7 @@ export default function ProviderForm({ provider, counties, statuses, onSaved, on
         )}
 
         <div className="field">
-          <label htmlFor={`${formId}-providerName`}>Provider name</label>
+          <label htmlFor={`${formId}-providerName`}>Provider Name</label>
           <input
             {...fieldProps('providerName')}
             type="text"
@@ -134,7 +134,7 @@ export default function ProviderForm({ provider, counties, statuses, onSaved, on
             Cancel
           </button>
           <button type="submit" className="primary" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Add provider'}
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Provider'}
           </button>
         </div>
       </form>

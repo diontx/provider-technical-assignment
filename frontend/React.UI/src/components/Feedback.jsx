@@ -15,7 +15,7 @@ export function ErrorAlert({ error, onRetry }) {
       <p>{error.message}</p>
       {onRetry && (
         <button type="button" onClick={onRetry}>
-          Try again
+          Try Again
         </button>
       )}
     </div>

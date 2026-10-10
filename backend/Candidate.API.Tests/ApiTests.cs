@@ -57,6 +57,7 @@ public sealed class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         using var scope = validated.Services.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IProviderService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ILicenseService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IReportService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IAuditService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ILookupService>());
@@ -291,6 +292,86 @@ public sealed class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         // The name is free to use again.
         await CreateAsync("Api Delete Me");
+    }
+
+    // Issue license
+
+    [Fact]
+    public async Task Issue_license_returns_201_with_a_generated_number_and_the_provider_becomes_valid()
+    {
+        var provider = await CreateAsync("Api Issue License");
+        var today = factory.Clock.Today;
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/providers/{provider.ProviderId}/licenses",
+            new { issueDate = today.ToString("yyyy-MM-dd"), expirationDate = today.AddYears(1).ToString("yyyy-MM-dd") });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var license = (await response.Content.ReadFromJsonAsync<LicenseDto>(ApiFactory.Json))!;
+        Assert.Equal(LicenseService.FormatNumber(license.LicenseId), license.LicenseNumber);
+        Assert.Equal(LicenseStatus.Active, license.LicenseStatus);
+        Assert.True(license.IsCurrentlyValid);
+
+        var listed = await ReadAsync<List<LicenseDto>>(await _client.GetAsync(response.Headers.Location));
+        Assert.Equal(license.LicenseNumber, Assert.Single(listed).LicenseNumber);
+
+        var detail = await ReadAsync<ProviderDetail>(await _client.GetAsync($"/api/providers/{provider.ProviderId}"));
+        Assert.True(detail.HasValidLicense);
+    }
+
+    [Fact]
+    public async Task Issue_license_with_an_empty_body_uses_today_and_a_one_year_term()
+    {
+        var provider = await CreateAsync("Api Issue Defaults");
+
+        var response = await _client.PostAsJsonAsync($"/api/providers/{provider.ProviderId}/licenses", new { });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var license = (await response.Content.ReadFromJsonAsync<LicenseDto>(ApiFactory.Json))!;
+        Assert.Equal(factory.Clock.Today, license.IssueDate);
+        Assert.Equal(factory.Clock.Today.AddYears(1), license.ExpirationDate);
+    }
+
+    [Fact]
+    public async Task Issue_license_to_a_provider_that_already_has_a_valid_one_returns_409()
+    {
+        // Provider 1 holds two valid licenses in the sample data.
+        var response = await _client.PostAsJsonAsync("/api/providers/1/licenses", new { });
+
+        var problem = await ReadProblemAsync(response, HttpStatusCode.Conflict);
+        Assert.Contains("already holds a valid license", problem.Detail);
+    }
+
+    [Fact]
+    public async Task Issue_license_with_invalid_dates_returns_400_on_the_field()
+    {
+        var provider = await CreateAsync("Api Issue Invalid");
+        var today = factory.Clock.Today;
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/providers/{provider.ProviderId}/licenses",
+            new { issueDate = today.ToString("yyyy-MM-dd"), expirationDate = today.ToString("yyyy-MM-dd") });
+
+        var problem = await ReadProblemAsync(response, HttpStatusCode.BadRequest);
+        Assert.Equal(["expirationDate"], problem.Errors.Keys);
+    }
+
+    [Theory]
+    [InlineData("/api/providers/11/licenses")]
+    [InlineData("/api/providers/99999/licenses")]
+    public async Task Issue_license_to_a_soft_deleted_or_unknown_provider_returns_404(string url)
+    {
+        await ReadProblemAsync(await _client.PostAsJsonAsync(url, new { }), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Issue_license_with_a_malformed_date_returns_400_not_500()
+    {
+        var provider = await CreateAsync("Api Issue Bad Date");
+
+        var response = await _client.PostAsJsonAsync($"/api/providers/{provider.ProviderId}/licenses", new { issueDate = "next week" });
+
+        await ReadProblemAsync(response, HttpStatusCode.BadRequest);
     }
 
     // Reports, audit, lookups, dashboard

@@ -6,9 +6,9 @@ import ReportsPage from './pages/ReportsPage.jsx'
 
 const VIEWS = [
   { id: 'providers', label: 'Providers', Page: ProvidersPage },
-  { id: 'reports', label: 'License reports', Page: ReportsPage },
+  { id: 'reports', label: 'License Reports', Page: ReportsPage },
   { id: 'dashboard', label: 'Dashboard', Page: DashboardPage },
-  { id: 'deleted', label: 'Deleted (audit)', Page: DeletedProvidersPage },
+  { id: 'deleted', label: 'Deleted (Audit)', Page: DeletedProvidersPage },
 ]
 
 function App() {

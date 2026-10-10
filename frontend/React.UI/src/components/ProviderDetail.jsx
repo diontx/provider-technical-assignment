@@ -3,29 +3,17 @@ import { formatDate, formatDateTime } from '../format.js'
 import { useAsync } from '../hooks/useAsync.js'
 import { ErrorAlert, Loading, StatusBadge } from './Feedback.jsx'
 import LicenseTable from './LicenseTable.jsx'
+import Modal from './Modal.jsx'
 
 /**
- * The selected provider and its licenses, loaded from GET /api/providers/{id}.
- * @param {{ providerId: number, version?: number, onClose: () => void }} props
- *   `version` changes when the provider was edited, which reloads it.
+ * The selected provider and its licenses, loaded from GET /api/providers/{id} and shown in a modal.
+ * @param {{ providerId: number, onClose: () => void }} props
  */
-export default function ProviderDetail({ providerId, version = 0, onClose }) {
-  const {
-    data: provider,
-    error,
-    loading,
-    reload,
-  } = useAsync((signal) => getProvider(providerId, signal), [providerId, version])
+export default function ProviderDetail({ providerId, onClose }) {
+  const { data: provider, error, loading, reload } = useAsync((signal) => getProvider(providerId, signal), [providerId])
 
   return (
-    <section className="panel" aria-label="Provider licenses">
-      <header className="panel-header">
-        <h2>{provider ? provider.providerName : 'Provider'}</h2>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </header>
-
+    <Modal title={provider ? provider.providerName : 'Provider Licenses'} onCancel={onClose} wide showClose>
       {loading && !provider && <Loading label="Loading licenses…" />}
       {error && <ErrorAlert error={error} onRetry={reload} />}
 
@@ -37,7 +25,7 @@ export default function ProviderDetail({ providerId, version = 0, onClose }) {
               <dd>{provider.county}</dd>
             </div>
             <div>
-              <dt>Provider status</dt>
+              <dt>Provider Status</dt>
               <dd>
                 <StatusBadge value={provider.status} />
               </dd>
@@ -47,7 +35,7 @@ export default function ProviderDetail({ providerId, version = 0, onClose }) {
               <dd>{formatDateTime(provider.createdUtc)}</dd>
             </div>
             <div>
-              <dt>Last changed</dt>
+              <dt>Last Changed</dt>
               <dd>{provider.modifiedUtc ? formatDateTime(provider.modifiedUtc) : 'Never'}</dd>
             </div>
           </dl>
@@ -63,6 +51,6 @@ export default function ProviderDetail({ providerId, version = 0, onClose }) {
           <LicenseTable licenses={provider.licenses} />
         </>
       )}
-    </section>
+    </Modal>
   )
 }

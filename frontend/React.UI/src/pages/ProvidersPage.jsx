@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getCounties, getStatuses, listProviders } from '../api/providers.js'
 import DeleteProviderDialog from '../components/DeleteProviderDialog.jsx'
+import IssueLicenseDialog from '../components/IssueLicenseDialog.jsx'
 import { EmptyState, ErrorAlert, Loading, StatusBadge } from '../components/Feedback.jsx'
 import ProviderDetail from '../components/ProviderDetail.jsx'
 import ProviderForm from '../components/ProviderForm.jsx'
@@ -17,9 +18,9 @@ export default function ProvidersPage() {
   const search = useDebouncedValue(filters.search, 300)
 
   const [selectedId, setSelectedId] = useState(null)
-  const [detailVersion, setDetailVersion] = useState(0)
   const [editing, setEditing] = useState(undefined) // undefined: closed, null: adding, object: editing
   const [deleting, setDeleting] = useState(null)
+  const [issuing, setIssuing] = useState(null)
   const [notice, setNotice] = useState('')
 
   const lookups = useAsync(async (signal) => {
@@ -48,15 +49,17 @@ export default function ProvidersPage() {
   function onSaved(saved) {
     setNotice(`${saved.providerName} was ${editing ? 'updated' : 'added'}.`)
     setEditing(undefined)
-    setDetailVersion((current) => current + 1)
+    providers.reload()
+  }
+
+  function onIssued(license) {
+    setNotice(`License ${license.licenseNumber} was issued to ${issuing.providerName}.`)
+    setIssuing(null)
     providers.reload()
   }
 
   function onDeleted() {
     setNotice(`${deleting.providerName} was deleted. The record is kept for audit.`)
-    if (selectedId === deleting.providerId) {
-      setSelectedId(null)
-    }
     setDeleting(null)
     // If that was the last row on this page, step back so the user is not left on an empty page.
     if (providers.data?.items.length === 1 && page > 1) {
@@ -71,11 +74,11 @@ export default function ProvidersPage() {
       <div className="toolbar">
         <div className="filters">
           <label>
-            Search by name
+            Search by Name
             <input
               type="search"
               value={filters.search}
-              placeholder="Provider name"
+              placeholder="Provider Name"
               onChange={(event) => setFilter('search', event.target.value)}
             />
           </label>
@@ -103,14 +106,14 @@ export default function ProvidersPage() {
           </label>
           {isFiltered && (
             <button type="button" onClick={clearFilters}>
-              Clear filters
+              Clear Filters
             </button>
           )}
         </div>
 
         {/* Adding needs the county and status lists, so the button waits for them. */}
         <button type="button" className="primary" disabled={!lookups.data} onClick={() => setEditing(null)}>
-          Add provider
+          Add Provider
         </button>
       </div>
 
@@ -145,7 +148,7 @@ export default function ProvidersPage() {
             </thead>
             <tbody>
               {providers.data.items.map((provider) => (
-                <tr key={provider.providerId} className={provider.providerId === selectedId ? 'row-selected' : undefined}>
+                <tr key={provider.providerId}>
                   <th scope="row">{provider.providerName}</th>
                   <td>{provider.county}</td>
                   <td>
@@ -162,6 +165,16 @@ export default function ProvidersPage() {
                     >
                       Licenses
                     </button>
+                    {/* Offered when the API counts no valid license: none at all, expired, or suspended. */}
+                    {provider.validLicenseCount === 0 && (
+                      <button
+                        type="button"
+                        aria-label={`Issue License to ${provider.providerName}`}
+                        onClick={() => setIssuing(provider)}
+                      >
+                        Issue License
+                      </button>
+                    )}
                     <button
                       type="button"
                       aria-label={`Edit ${provider.providerName}`}
@@ -198,9 +211,7 @@ export default function ProvidersPage() {
         </>
       )}
 
-      {selectedId !== null && (
-        <ProviderDetail providerId={selectedId} version={detailVersion} onClose={() => setSelectedId(null)} />
-      )}
+      {selectedId !== null && <ProviderDetail providerId={selectedId} onClose={() => setSelectedId(null)} />}
 
       {editing !== undefined && (
         <ProviderForm
@@ -211,6 +222,8 @@ export default function ProvidersPage() {
           onCancel={() => setEditing(undefined)}
         />
       )}
+
+      {issuing && <IssueLicenseDialog provider={issuing} onIssued={onIssued} onCancel={() => setIssuing(null)} />}
 
       {deleting && <DeleteProviderDialog provider={deleting} onDeleted={onDeleted} onCancel={() => setDeleting(null)} />}
     </>

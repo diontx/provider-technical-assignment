@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getActiveProvidersWithActiveLicenses, getActiveProvidersWithExpiredLicenses } from '../api/providers.js'
 import { EmptyState, ErrorAlert, Loading } from '../components/Feedback.jsx'
+import IssueLicenseDialog from '../components/IssueLicenseDialog.jsx'
 import LicenseTable from '../components/LicenseTable.jsx'
 import { formatDate, plural } from '../format.js'
 import { useAsync } from '../hooks/useAsync.js'
@@ -9,16 +10,15 @@ import { useAsync } from '../hooks/useAsync.js'
 const REPORTS = [
   {
     id: 'active',
-    label: 'Active providers and their active licenses',
-    description:
-      'Every provider with status Active, with the licenses that are valid today. A provider with no valid license is still listed, so the gap is visible.',
+    label: 'Active Providers and License Status',
+    description: 'All active providers and their current license status.',
     load: getActiveProvidersWithActiveLicenses,
     emptyLicenses: 'No valid license.',
     empty: 'There are no active providers.',
   },
   {
     id: 'expired',
-    label: 'Active providers with expired licenses',
+    label: 'Active Providers with Expired Licenses',
     description:
       'Providers that appear Active but hold at least one license whose expiration date has passed, including licenses whose stored status was never updated.',
     load: getActiveProvidersWithExpiredLicenses,
@@ -31,6 +31,14 @@ export default function ReportsPage() {
   const [reportId, setReportId] = useState(REPORTS[0].id)
   const report = REPORTS.find((candidate) => candidate.id === reportId)
   const { data, error, loading, reload } = useAsync((signal) => report.load(signal), [reportId])
+  const [issuing, setIssuing] = useState(null)
+  const [notice, setNotice] = useState('')
+
+  function onIssued(license) {
+    setNotice(`License ${license.licenseNumber} was issued to ${issuing.providerName}.`)
+    setIssuing(null)
+    reload()
+  }
 
   return (
     <>
@@ -49,6 +57,12 @@ export default function ReportsPage() {
 
       <p className="hint">{report.description}</p>
 
+      {notice && (
+        <p className="notice" role="status">
+          {notice}
+        </p>
+      )}
+
       {loading && <Loading label="Loading report…" />}
       {error && <ErrorAlert error={error} onRetry={reload} />}
 
@@ -66,11 +80,24 @@ export default function ReportsPage() {
                 {row.providerName} <span className="muted">· {row.county} County</span>
                 {row.hasNoValidLicense && <span className="badge badge-warning">No valid license</span>}
               </h3>
+              {/* The API reports who has no valid license; it also refuses to issue one to anyone else. */}
+              {row.hasNoValidLicense && (
+                <button
+                  type="button"
+                  className="row-action"
+                  aria-label={`Issue License to ${row.providerName}`}
+                  onClick={() => setIssuing(row)}
+                >
+                  Issue License
+                </button>
+              )}
               <LicenseTable licenses={row.licenses} emptyMessage={report.emptyLicenses} />
             </section>
           ))}
         </>
       )}
+
+      {issuing && <IssueLicenseDialog provider={issuing} onIssued={onIssued} onCancel={() => setIssuing(null)} />}
     </>
   )
 }

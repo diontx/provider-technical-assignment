@@ -223,10 +223,6 @@ table.is-refreshing {
   opacity: 0.6;
 }
 
-.row-selected {
-  background: #eaf2fb;
-}
-
 .row-expired {
   background: var(--danger-surface);
 }
@@ -368,13 +364,6 @@ h3 .badge {
   border-radius: 6px;
 }
 
-.panel-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .facts {
   display: flex;
   flex-wrap: wrap;
@@ -393,6 +382,14 @@ h3 .badge {
 
 .report-row {
   margin-bottom: 1.25rem;
+}
+
+.row-action {
+  margin-bottom: 0.6rem;
+}
+
+.field .hint {
+  margin: 0;
 }
 
 /* Modal and form */
@@ -414,6 +411,18 @@ h3 .badge {
   background: var(--surface);
   border-radius: 8px;
   box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
+}
+
+/* For dialogs that hold a table, such as a provider's licenses. */
+.modal-wide {
+  width: min(760px, 100%);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .modal:focus {
@@ -456,15 +465,29 @@ h3 .badge {
 }
 
 .card {
+  display: block;
+  width: 100%;
   padding: 1rem;
+  text-align: left;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
 }
 
+/* A zero has no records to show, so its card is not clickable, but it should still read normally. */
+.card:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 .card-alert {
   border-color: var(--danger);
   background: var(--danger-surface);
+}
+
+.card-value,
+.card-label {
+  display: block;
 }
 
 .card-value {
@@ -493,11 +516,74 @@ h3 .badge {
   list-style: none;
 }
 
-.chart li {
+.chart-row {
   display: grid;
-  grid-template-columns: 7.5rem 1fr 2rem;
+  grid-template-columns: 9rem 1fr 2rem;
   align-items: center;
   gap: 0.5rem;
+  width: 100%;
+  padding: 0.2rem 0.3rem;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+}
+
+.chart-row:hover:not(:disabled) {
+  background: #eaf2fb;
+}
+
+.chart-row:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.chart-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pie svg {
+  width: 9rem;
+  height: 9rem;
+  flex: none;
+}
+
+.pie svg path,
+.pie svg circle {
+  cursor: pointer;
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+.pie ul {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.pie-legend {
+  grid-template-columns: 0.8rem 1fr 2rem 2.5rem;
+}
+
+.pie-swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 2px;
+}
+
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .chart-track {

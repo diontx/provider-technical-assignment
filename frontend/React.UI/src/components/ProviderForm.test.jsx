@@ -19,7 +19,7 @@ function renderForm({ provider = null } = {}) {
   return { onSaved, onCancel, user: userEvent.setup() }
 }
 
-const nameInput = () => screen.getByLabelText('Provider name')
+const nameInput = () => screen.getByLabelText('Provider Name')
 const countySelect = () => screen.getByLabelText('County')
 const statusSelect = () => screen.getByLabelText('Status')
 
@@ -28,7 +28,7 @@ describe('ProviderForm validation', () => {
     const fetchMock = mockApi(() => ({ status: 201, body: {} }))
     const { user, onSaved } = renderForm()
 
-    await user.click(screen.getByRole('button', { name: 'Add provider' }))
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }))
 
     expect(screen.getByText('Provider name is required.')).toBeInTheDocument()
     expect(screen.getByText('County is required.')).toBeInTheDocument()
@@ -41,7 +41,7 @@ describe('ProviderForm validation', () => {
     mockApi(() => ({ status: 201, body: {} }))
     const { user } = renderForm()
 
-    await user.click(screen.getByRole('button', { name: 'Add provider' }))
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }))
 
     expect(nameInput()).toBeInvalid()
     expect(nameInput()).toHaveAccessibleDescription('Provider name is required.')
@@ -54,7 +54,7 @@ describe('ProviderForm validation', () => {
     await user.type(nameInput(), '    ')
     await user.selectOptions(countySelect(), 'Fulton')
     await user.selectOptions(statusSelect(), 'Active')
-    await user.click(screen.getByRole('button', { name: 'Add provider' }))
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }))
 
     expect(screen.getByText('Provider name is required.')).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -68,7 +68,7 @@ describe('ProviderForm validation', () => {
     await user.paste('x'.repeat(201))
     await user.selectOptions(countySelect(), 'Fulton')
     await user.selectOptions(statusSelect(), 'Active')
-    await user.click(screen.getByRole('button', { name: 'Add provider' }))
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }))
 
     expect(screen.getByText('Provider name must be 200 characters or fewer.')).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -77,7 +77,7 @@ describe('ProviderForm validation', () => {
   it('clears a field message as soon as the user corrects that field', async () => {
     mockApi(() => ({ status: 201, body: {} }))
     const { user } = renderForm()
-    await user.click(screen.getByRole('button', { name: 'Add provider' }))
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }))
 
     await user.type(nameInput(), 'S')
 
@@ -95,7 +95,7 @@ describe('ProviderForm saving', () => {
     await user.type(nameInput(), '  Sunrise Academy ')
     await user.selectOptions(countySelect(), 'DeKalb')
     await user.selectOptions(statusSelect(), 'Pending')
-    await user.click(screen.getByRole('button', { name: 'Add provider' }))
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }))
 
     expect(fetchMock.calls()).toEqual([
       {
@@ -117,7 +117,7 @@ describe('ProviderForm saving', () => {
     expect(statusSelect()).toHaveValue('Active')
 
     await user.selectOptions(statusSelect(), 'Inactive')
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
     expect(fetchMock.calls()).toEqual([
       {
@@ -141,7 +141,7 @@ describe('ProviderForm saving', () => {
     }))
     const { user, onSaved } = renderForm({ provider: providerListItem() })
 
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
     expect(await screen.findByText('Select a valid Georgia county.')).toBeInTheDocument()
     expect(countySelect()).toBeInvalid()
@@ -156,19 +156,19 @@ describe('ProviderForm saving', () => {
     mockApi(() => ({ status: 409, body: { title: 'Conflict', status: 409, detail } }))
     const { user, onSaved } = renderForm({ provider: providerListItem() })
 
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(detail)
     expect(onSaved).not.toHaveBeenCalled()
     // The form is usable again, so the user can correct the value and retry.
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeEnabled()
   })
 
   it('shows an error when the API cannot be reached', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     const { user } = renderForm({ provider: providerListItem() })
 
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Cannot reach the API.')
   })

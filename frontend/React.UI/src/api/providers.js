@@ -26,6 +26,14 @@ export const updateProvider = (providerId, provider) =>
 /** Soft delete: the API keeps the record for audit. @param {number} providerId */
 export const deleteProvider = (providerId) => request(`/providers/${providerId}`, { method: 'DELETE' })
 
+/**
+ * Issues a new Active license. The API generates the license number and returns the license.
+ * @param {number} providerId
+ * @param {{ issueDate: string, expirationDate: string }} license Dates as "yyyy-MM-dd".
+ */
+export const issueLicense = (providerId, license) =>
+  request(`/providers/${providerId}/licenses`, { method: 'POST', body: license })
+
 export const getCounties = (signal) => request('/lookups/counties', { signal })
 
 export const getStatuses = (signal) => request('/lookups/statuses', { signal })
@@ -39,3 +47,17 @@ export const getActiveProvidersWithExpiredLicenses = (signal) =>
 export const getDeletedProviders = (signal) => request('/audit/providers/deleted', { signal })
 
 export const getDashboardSummary = (signal) => request('/dashboard/summary', { signal })
+
+/**
+ * The providers behind a dashboard number.
+ * @param {{ status?: string, county?: string, licenseGap?: 'NoValidLicense' | 'ExpiredLicense' }} filters
+ * @param {AbortSignal} [signal]
+ */
+export const getDashboardProviders = (filters, signal) => request(`/dashboard/providers${toQuery(filters)}`, { signal })
+
+/**
+ * The licenses behind a dashboard number.
+ * @param {string} [validity] A bucket key from the summary; omit for every license.
+ * @param {AbortSignal} [signal]
+ */
+export const getDashboardLicenses = (validity, signal) => request(`/dashboard/licenses${toQuery({ validity })}`, { signal })

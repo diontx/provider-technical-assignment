@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Candidate.API.Controllers;
 
 [Route("api/providers")]
-public sealed class ProvidersController(IProviderService providers) : ApiControllerBase
+public sealed class ProvidersController(IProviderService providers, ILicenseService licenses) : ApiControllerBase
 {
     /// <summary>Lists providers that are not soft-deleted, with optional search, filters, and paging.</summary>
     [HttpGet]
@@ -32,6 +32,23 @@ public sealed class ProvidersController(IProviderService providers) : ApiControl
     {
         var result = await providers.GetLicensesAsync(id, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : ToProblem(result.Error!);
+    }
+
+    /// <summary>
+    /// Issues a new Active license with a generated license number.
+    /// 409 if the provider already holds a currently valid license.
+    /// </summary>
+    [HttpPost("{id:int}/licenses")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<LicenseDto>> IssueLicense(int id, IssueLicenseRequest request, CancellationToken cancellationToken)
+    {
+        var result = await licenses.IssueAsync(id, request, cancellationToken);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetLicenses), new { id }, result.Value)
+            : ToProblem(result.Error!);
     }
 
     [HttpPost]

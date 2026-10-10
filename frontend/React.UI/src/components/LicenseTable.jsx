@@ -5,9 +5,10 @@ import { EmptyState, StatusBadge } from './Feedback.jsx'
  * Licenses with the stored status and the validity the API computed from the expiration date,
  * side by side. The UI does not decide validity; it displays `isExpired` and `isCurrentlyValid`.
  *
- * @param {{ licenses: object[], emptyMessage?: string }} props
+ * @param {{ licenses: object[], emptyMessage?: string, showProvider?: boolean }} props
+ *   `showProvider` adds a provider column, for lists that span providers (each license then carries `providerName`).
  */
-export default function LicenseTable({ licenses, emptyMessage = 'This provider has no licenses.' }) {
+export default function LicenseTable({ licenses, emptyMessage = 'This provider has no licenses.', showProvider = false }) {
   if (licenses.length === 0) {
     return <EmptyState>{emptyMessage}</EmptyState>
   }
@@ -16,6 +17,7 @@ export default function LicenseTable({ licenses, emptyMessage = 'This provider h
     <table className="licenses">
       <thead>
         <tr>
+          {showProvider && <th scope="col">Provider</th>}
           <th scope="col">License number</th>
           <th scope="col">Stored status</th>
           <th scope="col">Expires</th>
@@ -25,6 +27,7 @@ export default function LicenseTable({ licenses, emptyMessage = 'This provider h
       <tbody>
         {licenses.map((license) => (
           <tr key={license.licenseId} className={license.isExpired ? 'row-expired' : undefined}>
+            {showProvider && <th scope="row">{license.providerName}</th>}
             <td>{license.licenseNumber}</td>
             <td>
               <StatusBadge value={license.licenseStatus} />

@@ -44,6 +44,7 @@ builder.Services.AddDbContext<ProviderDbContext>((services, options) =>
 });
 
 builder.Services.AddScoped<IProviderService, ProviderService>();
+builder.Services.AddScoped<ILicenseService, LicenseService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<ILookupService, LookupService>();
